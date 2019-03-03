@@ -2,7 +2,8 @@ import configparser
 import ast
 import os
 from tqdm import tqdm
-from urllib.request import urlopen
+
+
 
 def sync():
     config = configparser.ConfigParser()
@@ -27,9 +28,19 @@ def sync():
             os.mkdir(os.path.join(all_show_dir, show))
         show_dir = os.path.join(all_show_dir, show)
         episode_files = os.listdir(show_dir)
-        show_url = config["settings"]["base_url"] + "/show"
+        show_url = config["settings"]["base_url"] + "/" + show
 
         break
+
+def get_episodes(show_url):
+    from urllib.request import Request, urlopen
+
+    req = Request(
+        show_url,
+        headers={'User-Agent': 'Mozilla/5.0'})
+
+    html = urlopen(req).read()
+    print(html)
 
 
 def set_config():
@@ -45,5 +56,6 @@ def set_config():
 
 
 if __name__ == "__main__":
-    set_config()
-    sync()
+    # set_config()
+    # sync()
+    get_episodes('http://horriblesubs.info/shows/magi/')
