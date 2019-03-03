@@ -2,7 +2,9 @@ import configparser
 import ast
 import os
 from tqdm import tqdm
-
+import time
+from selenium import webdriver
+import re
 
 
 def sync():
@@ -10,18 +12,18 @@ def sync():
     config.read("config.ini")
     shows = config["settings"]["shows"].split(",")
     all_show_dir = config["settings"]["show_dir"]
-    print('Shows set to sync:')
+    print("Shows set to sync:")
     print(type(shows))
-    print('Directory for shows')
-    print(all_show_dir, '\n')
+    print("Directory for shows")
+    print(all_show_dir, "\n")
     if not os.path.isdir(all_show_dir):
         os.mkdir(all_show_dir)
 
     # Update shows
     dirs = os.listdir(all_show_dir)
-    print('Current Show Directories:')
+    print("Current Show Directories:")
     print(dirs)
-    print('Updating Shows:\n')
+    print("Updating Shows:\n")
     for show in tqdm(shows):
         # Create any missing directories
         if show not in dirs:
@@ -32,30 +34,64 @@ def sync():
 
         break
 
+
 def get_episodes(show_url):
     from urllib.request import Request, urlopen
 
-    req = Request(
-        show_url,
-        headers={'User-Agent': 'Mozilla/5.0'})
+    req = Request(show_url, headers={"User-Agent": "Mozilla/5.0"})
 
     html = urlopen(req).read()
     print(html)
 
 
+def selenium_get_episodes(show_url):
+    wait_time = .2
+    config = configparser.ConfigParser()
+    config.read("config.ini")
+    chromedriver_path = config["settings"]["chromedriver_path"]
+    driver = webdriver.Chrome(
+        chromedriver_path
+    )  # Optional argument, if not specified will search path.
+    driver.get(show_url)
+    # Check for show more, expand if found
+    while(True):
+        try:
+            show_more = driver.find_element_by_link_text('Show more ▼')
+            show_more.click()
+            time.sleep(wait_time)
+        except:
+            break
+
+    episode_container = driver.find_element_by_class_name("episode-container")
+    print(episode_container.text)
+    episode_boxes = driver.find_elements_by_class_name("rls-info-container")
+    for box in episode_boxes:
+        box.click()
+        time.sleep(wait_time)
+
+    episodes = re.search('( [0-9]+[.]*)\w+', episode_container.text)
+    print(episodes)
+    input("Press Enter to Close")
+    driver.close()
+
+
 def set_config():
     config = configparser.ConfigParser()
-    show_dir = os.path.join(os.path.expanduser('~'), 'hd_bot_example_dir')
+    show_dir = os.path.join(os.path.expanduser("~"), "hd_bot_example_dir")
+    chromedriver_location = os.path.join(
+        os.path.expanduser("~"), "PycharmProjects", "hd_bot", "chromedriver"
+    )
     config["settings"] = {
         "base_url": "https://horriblesubs.info/shows/",
         "shows": "one-punch-man,prison-school,goblin-slayer",
-        "show_dir": show_dir
+        "show_dir": show_dir,
+        "chromedriver_path": chromedriver_location,
     }
     with open("config.ini", "w") as configfile:
         config.write(configfile)
 
 
 if __name__ == "__main__":
-    # set_config()
+    set_config()
     # sync()
-    get_episodes('http://horriblesubs.info/shows/magi/')
+    selenium_get_episodes("http://horriblesubs.info/shows/goblin-slayer/")
