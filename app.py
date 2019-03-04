@@ -64,14 +64,8 @@ def selenium_get_episodes(show_url):
 
     episode_container = driver.find_element_by_class_name("episode-container")
     print(episode_container.text)
-    episode_boxes = driver.find_elements_by_class_name("rls-info-container")
-    for box in episode_boxes:
-        box.click()
-        time.sleep(wait_time)
-
-    episodes = re.search('( [0-9]+[.]*)\w+', episode_container.text)
+    episodes = re.findall('( [0-9]+[.]*[0-9]* )\w+', episode_container.text)
     print(episodes)
-    input("Press Enter to Close")
     driver.close()
 
 
