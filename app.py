@@ -5,6 +5,7 @@ from tqdm import tqdm
 import time
 from selenium import webdriver
 import re
+from deluge_client import DelugeRPCClient
 
 
 def sync():
@@ -24,7 +25,8 @@ def sync():
     print("Current Show Directories:")
     print(dirs)
     print("Updating Shows:\n")
-    for show in tqdm(shows):
+    for show in shows:
+        print("Updating " + show)
         # Create any missing directories
         if show not in dirs:
             os.mkdir(os.path.join(all_show_dir, show))
@@ -41,10 +43,42 @@ def sync():
             if e not in parsed_files:
                 episodes_to_fetch.append(e)
         links_to_add = get_magnet_links(show_url, episodes_to_fetch)
+        if not test_deluge_connection():
+            print('error connecting to deluge')
+        for link in links_to_add:
+            add_to_deluge(link, os.path.join(all_show_dir, show))
+
+def add_to_deluge(link, save_path):
+    config = configparser.ConfigParser()
+    config.read("config.ini")
+    client = DelugeRPCClient(
+        config["deluge"]["url"],
+        config["deluge"]["port"],
+        config["deluge"]["username"],
+        config["deluge"]["password"],
+    )
+    client.connect()
+    client.
+
+
+def test_deluge_connection():
+    config = configparser.ConfigParser()
+    config.read("config.ini")
+    client = DelugeRPCClient(
+        config["deluge"]["url"],
+        config["deluge"]["port"],
+        config["deluge"]["username"],
+        config["deluge"]["password"],
+    )
+    client.connect()
+    status = client.connected
+    client.disconnect()
+    return(status)
 
 
 def get_magnet_links(show_url, episodes):
     wait_time = 0.2
+    episodes = [e.replace(".", "-") for e in episodes]
     config = configparser.ConfigParser()
     config.read("config.ini")
     chromedriver_path = config["settings"]["chromedriver_path"]
@@ -72,7 +106,7 @@ def get_magnet_links(show_url, episodes):
             link_element = link_container.find_element_by_link_text("Magnet")
             magnets.append(link_element.get_attribute("href"))
         except:
-            print('Couldn\'t find episode ' + str(ep))
+            print("Couldn't find episode " + str(ep))
     print(magnets)
     return magnets
     driver.close()
@@ -97,7 +131,6 @@ def get_episodes(show_url):
             break
 
     episode_container = driver.find_element_by_class_name("episode-container")
-    print(episode_container.text)
     episodes = re.findall("( [0-9]+[.]*[0-9]* )\w+", episode_container.text)
     episodes = [e.replace(" ", "") for e in episodes]
     driver.close()
@@ -116,12 +149,18 @@ def set_config():
         "show_dir": show_dir,
         "chromedriver_path": chromedriver_location,
     }
+    config["deluge"] = {
+        "url": "127.0.0.1",
+        "port": "8080",
+        "username": "admin",
+        "password": "password",
+    }
     with open("config.ini", "w") as configfile:
         config.write(configfile)
 
 
 if __name__ == "__main__":
     set_config()
-    # sync()
+    sync()
     # get_episodes("http://horriblesubs.info/shows/goblin-slayer/")
-    get_magnet_links("http://horriblesubs.info/shows/goblin-slayer/", ['01', '02'])
+    # get_magnet_links("http://horriblesubs.info/shows/goblin-slayer/", ['01', '02'])
