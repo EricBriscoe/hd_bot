@@ -1,11 +1,10 @@
 import configparser
-import ast
 import os
-from tqdm import tqdm
-import time
-from selenium import webdriver
 import re
+import time
 from deluge_client import DelugeRPCClient
+
+from selenium import webdriver
 
 
 def sync():
@@ -48,6 +47,7 @@ def sync():
         for link in links_to_add:
             add_to_deluge(link, os.path.join(all_show_dir, show))
 
+
 def add_to_deluge(link, save_path):
     config = configparser.ConfigParser()
     config.read("config.ini")
@@ -59,7 +59,6 @@ def add_to_deluge(link, save_path):
     )
     client.connect()
     client.
-
 
 def test_deluge_connection():
     config = configparser.ConfigParser()
@@ -73,7 +72,7 @@ def test_deluge_connection():
     client.connect()
     status = client.connected
     client.disconnect()
-    return(status)
+    return status
 
 
 def get_magnet_links(show_url, episodes):
