@@ -2,9 +2,10 @@ import configparser
 import os
 import re
 import time
-from deluge_client import DelugeRPCClient
 
+from tqdm import tqdm
 from selenium import webdriver
+from selenium.common.exceptions import NoSuchElementException, ElementNotVisibleException, WebDriverException
 
 
 def sync():
@@ -13,7 +14,7 @@ def sync():
     shows = config["settings"]["shows"].split(",")
     all_show_dir = config["settings"]["show_dir"]
     print("Shows set to sync:")
-    print(type(shows))
+    print(shows)
     print("Directory for shows")
     print(all_show_dir, "\n")
     if not os.path.isdir(all_show_dir):
@@ -33,50 +34,80 @@ def sync():
         episode_files = os.listdir(show_dir)
         parsed_files = []
         for file in episode_files:
-            n = re.findall(" [0-9]+[.]*[0-9]* ")
-            parsed_files += n
+            n = re.findall(" [0-9]+[.]*[0-9]* ", file)
+            m = []
+            for o in n:
+                m.append(o.replace(" ", ""))
+            print("Found episode %s in the directory." % m)
+            parsed_files += m
         show_url = config["settings"]["base_url"] + "/" + show
         episodes = get_episodes(show_url)
         episodes_to_fetch = []
         for e in episodes:
             if e not in parsed_files:
                 episodes_to_fetch.append(e)
+                print("Going to attempt to find episode %s." %e)
         links_to_add = get_magnet_links(show_url, episodes_to_fetch)
-        if not test_deluge_connection():
-            print('error connecting to deluge')
-        for link in links_to_add:
+        for link in tqdm(links_to_add):
             add_to_deluge(link, os.path.join(all_show_dir, show))
 
 
 def add_to_deluge(link, save_path):
+    def wait():
+        wait_time = 0.5
+        time.sleep(wait_time)
     config = configparser.ConfigParser()
     config.read("config.ini")
-    client = DelugeRPCClient(
-        config["deluge"]["url"],
-        config["deluge"]["port"],
-        config["deluge"]["username"],
-        config["deluge"]["password"],
-    )
-    client.connect()
-    client.
-
-def test_deluge_connection():
-    config = configparser.ConfigParser()
-    config.read("config.ini")
-    client = DelugeRPCClient(
-        config["deluge"]["url"],
-        config["deluge"]["port"],
-        config["deluge"]["username"],
-        config["deluge"]["password"],
-    )
-    client.connect()
-    status = client.connected
-    client.disconnect()
-    return status
+    url = config["deluge"]["url"]
+    port = config["deluge"]["port"]
+    username = config["deluge"]["username"]
+    password = config["deluge"]["password"]
+    chromedriver_path = config["settings"]["chromedriver_path"]
+    driver = webdriver.Chrome(chromedriver_path)
+    # driver.get(url+":"+port)
+    driver.get("localhost:8112")
+    wait()
+    password_box = driver.find_element_by_name("password")
+    password_box.click()
+    wait()
+    password_box.send_keys(password)
+    login_button = driver.find_element_by_id("ext-gen155")
+    login_button.click()
+    # daemon_select = driver.find_element_by_id("ext-gen225")
+    # daemon_select.click()
+    # connect_button = driver.find_element_by_id("ext-gen213")
+    # connect_button.click()
+    wait()
+    add_button = driver.find_element_by_id("ext-gen49")
+    add_button.click()
+    wait()
+    url_button = driver.find_element_by_class_name("icon-add-url")
+    url_button.click()
+    url_textbox = driver.find_element_by_id("url")
+    url_textbox.send_keys(link)
+    add_magnet = driver.find_elements_by_class_name("x-btn-noicon")
+    for button in add_magnet:
+        try:
+            button.click()
+        except ElementNotVisibleException:
+            pass
+        except WebDriverException:
+            pass
+    while True:
+        try:
+            download_path = driver.find_element_by_id("ext-comp-1084")
+            break
+        except NoSuchElementException:
+            wait()
+    download_path.clear()
+    download_path.send_keys(save_path)
+    add_torrent = driver.find_element_by_id("ext-comp-1071")
+    add_torrent.click()
+    driver.close()
 
 
 def get_magnet_links(show_url, episodes):
-    wait_time = 0.2
+    wait_time = 0.15
     episodes = [e.replace(".", "-") for e in episodes]
     config = configparser.ConfigParser()
     config.read("config.ini")
@@ -138,21 +169,21 @@ def get_episodes(show_url):
 
 def set_config():
     config = configparser.ConfigParser()
-    show_dir = os.path.join(os.path.expanduser("~"), "hd_bot_example_dir")
+    show_dir = os.path.join("D:\\", "Plex", "Anime", "hd_bot_example_dir")
     chromedriver_location = os.path.join(
         os.path.expanduser("~"), "PycharmProjects", "hd_bot", "chromedriver"
     )
     config["settings"] = {
         "base_url": "https://horriblesubs.info/shows/",
-        "shows": "one-punch-man,prison-school,goblin-slayer",
+        "shows": "one-punch-man,goblin-slayer,magi,magi-s2,devilman-crybaby",
         "show_dir": show_dir,
         "chromedriver_path": chromedriver_location,
     }
     config["deluge"] = {
         "url": "127.0.0.1",
-        "port": "8080",
+        "port": "8112",
         "username": "admin",
-        "password": "password",
+        "password": "deluge",
     }
     with open("config.ini", "w") as configfile:
         config.write(configfile)
