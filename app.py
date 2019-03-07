@@ -175,7 +175,7 @@ def set_config():
     )
     config["settings"] = {
         "base_url": "https://horriblesubs.info/shows/",
-        "shows": "one-punch-man,goblin-slayer,magi,magi-s2,devilman-crybaby",
+        "shows": "one-punch-man,goblin-slayer,tensei-shitara-slime-datta-ken",
         "show_dir": show_dir,
         "chromedriver_path": chromedriver_location,
     }
@@ -192,5 +192,3 @@ def set_config():
 if __name__ == "__main__":
     set_config()
     sync()
-    # get_episodes("http://horriblesubs.info/shows/goblin-slayer/")
-    # get_magnet_links("http://horriblesubs.info/shows/goblin-slayer/", ['01', '02'])
